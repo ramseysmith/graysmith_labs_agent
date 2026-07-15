@@ -22,7 +22,10 @@ graysmith_labs_agent/
   README.md                         this file
   CLAUDE.md                         the agent charter and guardrails
   SPEC_template.md                  the per app spec that drives new builds
-  revenue_playbook.md               paywall experiments, cross promotion, dashboard
+  revenue_playbook.md               paywall experiments, cross promotion, dashboard.
+                                    premature as of 2026-07-15, see growth_plan.md
+  growth_plan.md                    what to actually do, measured against real
+                                    numbers, with verifiable outcomes
   scripts/
     nightly_maintenance.sh          the 3am job. calls the two below, then
                                     checks each repo. writes the report.
