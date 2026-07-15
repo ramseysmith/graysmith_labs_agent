@@ -52,7 +52,13 @@ function metricsFrom(body) {
   for (const m of list) {
     const id = m.id ?? m.name;
     if (!id) continue;
-    out[id] = { name: m.name ?? id, value: m.value, unit: m.unit ?? '' };
+    out[id] = {
+      name: m.name ?? id,
+      value: m.value,
+      unit: m.unit ?? '',
+      // Without the window, "Revenue 0" and "New Customers 21" are unreadable.
+      period: m.period ?? m.period_type ?? '',
+    };
   }
   return out;
 }
@@ -150,12 +156,29 @@ async function main() {
     for (const r of good) for (const id of Object.keys(r.metrics)) if (!ids.includes(id)) ids.push(id);
 
     const cols = good.map((r) => r.app.name);
-    console.log(`| metric | ${cols.join(' | ')} | portfolio |`);
-    console.log(`| --- | ${cols.map(() => '---').join(' | ')} | --- |`);
+    console.log(`| metric | window | ${cols.join(' | ')} | portfolio |`);
+    console.log(`| --- | --- | ${cols.map(() => '---').join(' | ')} | --- |`);
+
+    // Periods come back as ISO 8601 durations. Say them in English, because
+    // "Revenue 0 / P28D" is not a thing anyone should have to decode at 7am.
+    // PT1H and friends mark point in time metrics that refresh hourly, so MRR
+    // and active subscriptions are "right now" rather than a window.
+    const humanPeriod = (p) => {
+      if (!p) return 'current';
+      if (/^PT\d+[HMS]$/.test(p)) return 'right now';
+      let m;
+      if ((m = /^P(\d+)D$/.exec(p))) return m[1] === '1' ? 'last 24 hours' : `last ${m[1]} days`;
+      if ((m = /^P(\d+)W$/.exec(p))) return m[1] === '1' ? 'last week' : `last ${m[1]} weeks`;
+      if ((m = /^P(\d+)M$/.exec(p))) return m[1] === '1' ? 'last month' : `last ${m[1]} months`;
+      if ((m = /^P(\d+)Y$/.exec(p))) return m[1] === '1' ? 'last year' : `last ${m[1]} years`;
+      return p;
+    };
 
     for (const id of ids) {
-      const label = good.find((r) => r.metrics[id])?.metrics[id]?.name || id;
-      const unit = good.find((r) => r.metrics[id])?.metrics[id]?.unit || '';
+      const sample = good.find((r) => r.metrics[id])?.metrics[id];
+      const label = sample?.name || id;
+      const unit = sample?.unit || '';
+      const window = humanPeriod(sample?.period);
       const cells = [];
       let sum = 0;
       let summable = true;
@@ -169,7 +192,7 @@ async function main() {
       // Averages and rates must not be added together.
       const isRate = /rate|percent|conversion|average|arpu/i.test(id);
       const total = summable && !isRate ? fmt(sum, id, unit) : '-';
-      console.log(`| ${label} | ${cells.join(' | ')} | ${total} |`);
+      console.log(`| ${label} | ${window} | ${cells.join(' | ')} | ${total} |`);
     }
     console.log('');
     console.log('Rates and averages show no portfolio total on purpose, because adding them');
