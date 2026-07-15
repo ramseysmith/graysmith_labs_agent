@@ -119,14 +119,47 @@ Install the Claude mobile app, open the Code tab, and pick your session from the
 list (it shows a computer icon with a green dot when online). If you do not have
 the app yet, run `/mobile` inside Claude Code for a download link.
 
-### 4. Set your secrets in your shell profile
+### 4. Set your secrets, and not in your shell profile
 
-Add these to `~/.zshrc` (never commit them):
+Create `~/.graysmith_labs_secrets`:
 
 ```
-export REVENUECAT_API_KEY="your_v2_secret_key"
-export REVENUECAT_PROJECT_ID="your_project_id"
+REVENUECAT_API_KEY="sk_your_v2_secret_key"
+REVENUECAT_PROJECT_ID="your_project_id"
 ```
+
+then lock it down:
+
+```
+chmod 600 ~/.graysmith_labs_secrets
+```
+
+**Not `~/.zshrc`.** launchd runs `/bin/bash`, which never reads that file, so a
+key exported there works perfectly when you test by hand and is invisible at 3am.
+The revenue section would say "not configured" every morning while you assumed it
+was working.
+
+**Not the plist either.** This kit is a public repo and the plist is in it.
+
+The file above sits outside the working tree, so it cannot be committed by
+accident, and both launchd and your shell can read it. Override the location with
+`GRAYSMITH_SECRETS_FILE` if you prefer somewhere else.
+
+#### Getting the RevenueCat key
+
+In the RevenueCat dashboard: **Project settings**, then **API keys**, then
+**+ New**. Give it a name, select **V2** as the version, and grant it
+**`charts_metrics:overview:read`**, which is the permission the metrics overview
+endpoint requires. Select **Generate**.
+
+Secret keys are prefixed `sk_` and are shown **once**, so paste it straight into
+the file above. A v1 key or a public SDK key (`appl_...`, `goog_...`) will be
+rejected.
+
+If you set the key but not the project id, run `bash scripts/revenue_report.sh`
+and it will ask RevenueCat for your project id and print the line to paste. The
+Charts and Metrics endpoints are rate limited to 25 requests per minute, which a
+nightly job comes nowhere near.
 
 ### 5. Point the scripts at your repos
 

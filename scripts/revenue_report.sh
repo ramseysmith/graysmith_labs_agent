@@ -11,25 +11,53 @@
 # rest of the nightly report.
 set -uo pipefail
 
+# Read the secrets file if the caller has not already loaded it, so this script
+# works both standalone and from the nightly. See the note in
+# nightly_maintenance.sh: launchd never reads ~/.zshrc, and the plist is public.
+SECRETS_FILE="${GRAYSMITH_SECRETS_FILE:-${HOME}/.graysmith_labs_secrets}"
+if [ -f "$SECRETS_FILE" ]; then
+  set -a
+  . "$SECRETS_FILE"
+  set +a
+fi
+
 RC_KEY="${REVENUECAT_API_KEY:-}"
 RC_PROJECT="${REVENUECAT_PROJECT_ID:-}"
 API="https://api.revenuecat.com/v2"
+
+# A secrets file anyone can read is a secrets file worth warning about.
+if [ -f "$SECRETS_FILE" ]; then
+  perms="$(stat -f '%Lp' "$SECRETS_FILE" 2>/dev/null || echo '')"
+  case "$perms" in
+    600|400) ;;
+    '') ;;
+    *) echo "> Warning: ${SECRETS_FILE} is mode ${perms}. Run: chmod 600 ${SECRETS_FILE}" ; echo "" ;;
+  esac
+fi
 
 echo "## revenue"
 echo ""
 
 if [ -z "$RC_KEY" ]; then
-  cat <<'EOF'
+  cat <<EOF
 Not configured, so this is the one number nobody has.
 
-Add to ~/.zshrc, then open a new shell:
+Create \`${SECRETS_FILE}\` containing:
 
-    export REVENUECAT_API_KEY="your_v2_secret_key"
-    export REVENUECAT_PROJECT_ID="your_project_id"
+    REVENUECAT_API_KEY="sk_your_v2_secret_key"
+    REVENUECAT_PROJECT_ID="your_project_id"
 
-The key is a **v2 secret key** from RevenueCat, under Project settings then API
-keys. If you set the key but not the project id, this script finds the id for
-you and tells you what to paste.
+then \`chmod 600\` it.
+
+Do **not** put these in ~/.zshrc. launchd runs /bin/bash and never reads it, so
+the key would work when you test by hand and be invisible at 3am. Do not put
+them in the plist either; this kit is a public repo.
+
+Get the key from the RevenueCat dashboard: Project settings, then API keys, then
+"+ New". Name it, choose **V2**, and grant it \`charts_metrics:overview:read\`,
+which is the permission this endpoint needs. Secret keys start with \`sk_\` and
+are shown once. If you set the key but not the project id, this script asks
+RevenueCat for the id and prints the line to paste.
 
 Until then every revenue decision in the playbook is a guess.
 EOF

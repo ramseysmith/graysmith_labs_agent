@@ -13,6 +13,21 @@ export PATH="${HOME}/.local/node/bin:${HOME}/.bun/bin:/opt/homebrew/bin:/usr/loc
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KIT_DIR="$(dirname "$SCRIPT_DIR")"
 
+# Secrets.
+#
+# launchd runs /bin/bash and never reads ~/.zshrc, so exports you put there are
+# invisible to the 3am run even though they work perfectly when you test by hand.
+# They cannot go in the plist either, because this kit is a public repo.
+#
+# So they live in a file outside the working tree, which both launchd and your
+# terminal can read and which cannot be committed by accident.
+SECRETS_FILE="${GRAYSMITH_SECRETS_FILE:-${HOME}/.graysmith_labs_secrets}"
+if [ -f "$SECRETS_FILE" ]; then
+  set -a
+  . "$SECRETS_FILE"
+  set +a
+fi
+
 REPORT_DIR="${KIT_DIR}/reports"
 mkdir -p "$REPORT_DIR"
 STAMP="$(date +%Y_%m_%d)"
