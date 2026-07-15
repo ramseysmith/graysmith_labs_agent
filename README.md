@@ -33,12 +33,25 @@ graysmith_labs_agent/
     deploy_ota.sh                   gated over the air update wrapper
   launchd/
     com.graysmithlabs.nightly.plist macOS scheduler for the nightly job
-  .github/
-    workflows/ci.yml                the npm CI workflow. copy it into an app
-                                    repo to use it. Drift needs the bun variant.
+  templates/
+    ci-npm.yml                      CI for the npm apps: CelebriDay, BlitzTap,
+                                    SignSnap
+    ci-bun.yml                      CI for Drift, which npm cannot install
   reports/                          generated, gitignored
   state/                            what the watch saw last time, gitignored
 ```
+
+The CI files live in `templates/` on purpose. Anything under `.github/workflows/`
+is a **live** workflow, and GitHub would run it against this repo, which has no
+`package.json` to install. They are meant to be copied into an app repo:
+
+```
+cp templates/ci-npm.yml ../CelebriDay/.github/workflows/ci.yml
+cp templates/ci-bun.yml ../drift-app/.github/workflows/ci.yml
+```
+
+Pick by lockfile, not by habit. Drift has a `bun.lock` and a stale
+`package-lock.json`, and `npm ci` fails on it outright.
 
 The report is ordered the way you read it: what users see, what they pay, then
 code health. The first two are the ones you act on.

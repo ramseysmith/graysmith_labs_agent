@@ -1,0 +1,20 @@
+name: ci
+
+# Drift is a bun project. npm ci cannot install it, so this workflow uses bun
+# rather than the npm based one the other portfolio apps share.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run lint
