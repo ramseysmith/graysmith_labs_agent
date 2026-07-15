@@ -72,10 +72,17 @@ mentioned in onboarding. A streak game that never asks you to keep your streak.
 **Drift**: the final onboarding slide now asks for permission and schedules the
 existing 8:00 PM reminder. "Not now" completes onboarding untouched.
 
-**BlitzTap**: onboarding completion now calls `setNotificationsEnabled(true)`,
-which already requested permission, scheduled the reminder, persisted the
-setting, and left it off when denied. Nothing new was written. The existing path
-was simply never called from anywhere but a Settings switch.
+**BlitzTap**: onboarding gained a seventh slide, "Keep Your Streak", showing a
+mock of the real notification worded exactly as it ships, with the note that it
+only fires after a full day away. The button on that slide is the ask. It calls
+`setNotificationsEnabled(true)`, which already requested permission, scheduled the
+reminder, persisted the setting, and left it off when denied. Nothing new was
+written underneath. The existing path was simply never called from anywhere but a
+Settings switch.
+
+Putting the ask on the slide rather than on completion also means SKIP actually
+skips. An earlier version of this change asked on completion, which fired the
+prompt even for players who had skipped.
 
 ### Why the other two are excluded
 
@@ -95,8 +102,9 @@ for it: the question there is conversion at the moment of need, not habit.
 1. Ship a build of **both** apps. These are native permission prompts, so they
    need real builds, not over the air updates.
 2. On a clean install, finish onboarding and confirm the system permission prompt
-   appears. Drift: tap Enable Bedtime Reminder. BlitzTap: the prompt fires as
-   onboarding closes.
+   appears. Drift: tap Enable Bedtime Reminder on the last slide. BlitzTap: reach
+   the Keep Your Streak slide and tap Enable Reminders. In both, confirm that
+   declining or skipping still completes onboarding and prompts nothing.
 3. Drift: confirm a notification arrives at 8:00 PM. BlitzTap: leave the app for
    24 hours and confirm the coins reminder fires.
 4. **The real check, four weeks out, from the nightly report:** ad impressions per
@@ -117,10 +125,11 @@ something else caused it and the reminders get no credit.
 Drift's 8:00 PM default is a guess. It matches the existing store default, so it
 is at least consistent, but it may be early for some people.
 
-BlitzTap now fires a bare OS permission prompt with no explanation in front of
-it, which is a weaker ask than Drift's explicit slide and will be denied more
-often. It is still strictly better than never asking, and the fix if opt in looks
-poor is to add a slide explaining the streak before the prompt.
+Both apps now explain the reminder before prompting, which is the strongest ask
+available without measuring. Neither tracks whether the permission was granted,
+so opt in rate is invisible. If retention does not move, you cannot currently
+tell whether people declined or whether the reminder simply did not work. Logging
+the grant result is the obvious next instrument if this plan needs a second round.
 
 If opt in rates look fine and retention still does not move, the reminder was not
 the problem and this plan is wrong. That would point at the harder question:
