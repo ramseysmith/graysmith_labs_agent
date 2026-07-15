@@ -35,48 +35,96 @@ experiment run today would be measuring noise.
 
 ---
 
-## Plan 1: Retention. Drift's bedtime reminder
+## Plan 1: Retention. The reminder that never gets switched on
 
-**Status: shipped in code, needs a build.**
+**Status: shipped in code for Drift and BlitzTap. Both need a build.**
 
-### The bug
+This started as a Drift only plan, which was a mistake. Drift was simply where I
+looked first. Checking all four found the same bug in a second app and, more
+usefully, found that it does not apply to the other two.
 
-Drift already had the perfect retention mechanism: a daily notification reading
-"Time to wind down. Open Drift and prepare for restful sleep." It was
-unreachable in practice.
+### Per app, measured rather than assumed
 
-* `sleep-store.ts` defaults `reminderEnabled: false`
-* Onboarding never mentioned notifications
-* `setReminder` was called from exactly one place: a Settings screen
+| app | retention mechanism | default | onboarding asked? | verdict |
+| --- | --- | --- | --- | --- |
+| **Drift** | daily wind down reminder | **off** | no | had the bug, **fixed** |
+| **BlitzTap** | 24h inactivity streak nudge | **off** | no | had the bug, **fixed** |
+| **CelebriDay** | daily holiday notification | — | **yes, already asks** | already correct |
+| **SignSnap** | none. `expo-notifications` is not even a dependency | n/a | n/a | **not the mechanic** |
 
-So a sleep app whose entire value is a nightly habit shipped with its nightly
-habit switched off.
+### The bug, in the two that had it
 
-### The change
+Both apps already had a well built retention mechanism that nothing ever reached.
 
-The final onboarding slide now asks for notification permission and schedules
-the existing 8:00 PM reminder. "Not now" completes onboarding untouched. Settings
-still owns the time and the off switch.
+**Drift**: a daily notification reading "Time to wind down. Open Drift and prepare
+for restful sleep." `sleep-store.ts` defaulted `reminderEnabled: false`,
+onboarding never mentioned notifications, and `setReminder` was called from
+exactly one place: a Settings screen. A sleep app shipped with its nightly habit
+switched off.
+
+**BlitzTap**: an inactivity reminder that reschedules 24 hours out on every open,
+so it fires only after a full day away, telling the player their coins are
+waiting. `notificationsEnabled: false` in both SettingsContext and storage, never
+mentioned in onboarding. A streak game that never asks you to keep your streak.
+
+### The changes
+
+**Drift**: the final onboarding slide now asks for permission and schedules the
+existing 8:00 PM reminder. "Not now" completes onboarding untouched.
+
+**BlitzTap**: onboarding completion now calls `setNotificationsEnabled(true)`,
+which already requested permission, scheduled the reminder, persisted the
+setting, and left it off when denied. Nothing new was written. The existing path
+was simply never called from anywhere but a Settings switch.
+
+### Why the other two are excluded
+
+**CelebriDay already does this.** Its onboarding has a "Turn On Notifications"
+step calling `NotificationService.requestPermissions()`. Nothing to fix. If
+CelebriDay still fails to retain, the cause is elsewhere and this plan does not
+address it.
+
+**SignSnap should not do this.** It is an episodic utility, genre Business, "Sign
+for FREE!". People open it when they have a document to sign. A daily "sign
+something!" nudge would be spam, and `expo-notifications` is correctly not even
+installed. Its zero revenue is a real problem, but retention is the wrong frame
+for it: the question there is conversion at the moment of need, not habit.
 
 ### Verify
 
-1. Ship a build. This is a native permission prompt, so it needs a real build,
-   not an over the air update.
-2. On a clean install, finish onboarding, tap Enable, and confirm the system
-   permission prompt appears.
-3. Confirm a notification arrives at 8:00 PM.
-4. **The real check, four weeks out, from the nightly report:** Drift's ad
-   impressions per active user. Baseline is **38 impressions across 9 users**,
-   about 4.2 each over 28 days. If the reminder works, impressions per user rises
-   because people return more than once. If it does not move, the reminder is not
-   the problem and this plan is wrong.
+1. Ship a build of **both** apps. These are native permission prompts, so they
+   need real builds, not over the air updates.
+2. On a clean install, finish onboarding and confirm the system permission prompt
+   appears. Drift: tap Enable Bedtime Reminder. BlitzTap: the prompt fires as
+   onboarding closes.
+3. Drift: confirm a notification arrives at 8:00 PM. BlitzTap: leave the app for
+   24 hours and confirm the coins reminder fires.
+4. **The real check, four weeks out, from the nightly report:** ad impressions per
+   active user, per app.
+
+| app | baseline, 28 days | expectation if this works |
+| --- | --- | --- |
+| Drift | 38 impressions / 9 users = **4.2** | rises |
+| BlitzTap | 5 impressions / 9 users = **0.6** | rises |
+| CelebriDay | 3 / 5 = **0.6** | unchanged, nothing was fixed |
+| SignSnap | 8 / 9 = **0.9** | unchanged, and that is fine |
+
+CelebriDay and SignSnap are the control group. If all four move together,
+something else caused it and the reminders get no credit.
 
 ### Honest risk
 
-An 8:00 PM default is a guess. It matches the existing store default, so it is
-consistent, but it may be early for some people. If opt in rates look fine and
-retention still does not move, the next question is whether the app is worth
-returning to at all, which is a harder problem than a notification.
+Drift's 8:00 PM default is a guess. It matches the existing store default, so it
+is at least consistent, but it may be early for some people.
+
+BlitzTap now fires a bare OS permission prompt with no explanation in front of
+it, which is a weaker ask than Drift's explicit slide and will be denied more
+often. It is still strictly better than never asking, and the fix if opt in looks
+poor is to add a slide explaining the streak before the prompt.
+
+If opt in rates look fine and retention still does not move, the reminder was not
+the problem and this plan is wrong. That would point at the harder question:
+whether these apps are worth returning to at all.
 
 ---
 
