@@ -171,6 +171,9 @@ async function main() {
       if (!p) return 'current';
       if (/^PT\d+[HMS]$/.test(p)) return 'right now';
       let m;
+      // RevenueCat sends P0D for point in time balances like active
+      // subscriptions. A zero length window is not "last 0 days", it is now.
+      if (/^P0D$/.test(p)) return 'right now';
       if ((m = /^P(\d+)D$/.exec(p))) return m[1] === '1' ? 'last 24 hours' : `last ${m[1]} days`;
       if ((m = /^P(\d+)W$/.exec(p))) return m[1] === '1' ? 'last week' : `last ${m[1]} weeks`;
       if ((m = /^P(\d+)M$/.exec(p))) return m[1] === '1' ? 'last month' : `last ${m[1]} months`;
