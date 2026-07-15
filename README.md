@@ -121,11 +121,22 @@ the app yet, run `/mobile` inside Claude Code for a download link.
 
 ### 4. Set your secrets, and not in your shell profile
 
+**RevenueCat secret keys are project scoped.** Per the docs, "Secret API keys are
+project-wide", so there is no account wide key. Four apps in four projects means
+**four keys**, one created inside each project. OAuth tokens are the only cross
+project option and are far more machinery than a nightly job needs.
+
 Create `~/.graysmith_labs_secrets`:
 
 ```
-REVENUECAT_API_KEY="sk_your_v2_secret_key"
-REVENUECAT_PROJECT_ID="your_project_id"
+REVENUECAT_CELEBRIDAY_KEY="sk_..."
+REVENUECAT_CELEBRIDAY_PROJECT="proj..."
+REVENUECAT_BLITZTAP_KEY="sk_..."
+REVENUECAT_BLITZTAP_PROJECT="proj..."
+REVENUECAT_SIGNSNAP_KEY="sk_..."
+REVENUECAT_SIGNSNAP_PROJECT="proj..."
+REVENUECAT_DRIFT_KEY="sk_..."
+REVENUECAT_DRIFT_PROJECT="proj..."
 ```
 
 then lock it down:
@@ -133,6 +144,13 @@ then lock it down:
 ```
 chmod 600 ~/.graysmith_labs_secrets
 ```
+
+The `_PROJECT` lines are optional. A project scoped key can only see its own
+project, so if you leave one out the script asks RevenueCat which project the key
+belongs to and prints the line to paste. Fill them in once and it stops looking.
+
+Partial configuration is fine. Apps with a key report; apps without are listed as
+not set. Start with one and add the rest.
 
 **Not `~/.zshrc`.** launchd runs `/bin/bash`, which never reads that file, so a
 key exported there works perfectly when you test by hand and is invisible at 3am.
@@ -145,21 +163,25 @@ The file above sits outside the working tree, so it cannot be committed by
 accident, and both launchd and your shell can read it. Override the location with
 `GRAYSMITH_SECRETS_FILE` if you prefer somewhere else.
 
-#### Getting the RevenueCat key
+#### Getting the four RevenueCat keys
+
+Repeat this **once per project**, switching projects in the dashboard each time.
+The key belongs to whichever project you were in when you made it.
 
 In the RevenueCat dashboard: **Project settings**, then **API keys**, then
 **+ New**. Give it a name, select **V2** as the version, and grant it
 **`charts_metrics:overview:read`**, which is the permission the metrics overview
 endpoint requires. Select **Generate**.
 
-Secret keys are prefixed `sk_` and are shown **once**, so paste it straight into
-the file above. A v1 key or a public SDK key (`appl_...`, `goog_...`) will be
-rejected.
+Secret keys are prefixed `sk_` and are shown **once**, so paste each one straight
+into the file above. A v1 key or a public SDK key (`appl_...`, `goog_...`) will be
+rejected, and the report names which app was rejected rather than failing as a
+whole.
 
-If you set the key but not the project id, run `bash scripts/revenue_report.sh`
-and it will ask RevenueCat for your project id and print the line to paste. The
-Charts and Metrics endpoints are rate limited to 25 requests per minute, which a
-nightly job comes nowhere near.
+Run `bash scripts/revenue_report.sh` to check your work. It reports each app
+separately, so a typo in one key does not hide the other three. The Charts and
+Metrics endpoints are rate limited to 25 requests per minute, and the nightly
+makes at most eight calls, so the limit is not a concern.
 
 ### 5. Point the scripts at your repos
 
