@@ -196,34 +196,64 @@ AdMob has **no API key**. It supports OAuth only and **does not support service
 accounts**, so a background job needs a refresh token captured once through a
 browser.
 
-**Set the OAuth consent screen publishing status to "In production" first.**
-Google issues a refresh token that **expires in 7 days** to any project whose
-consent screen is external and still in "Testing". Your ad revenue would report
-for a week and then silently go to zero. The exemption for non expiring tokens
-only covers the `userinfo` and `openid` scopes, and we need `admob.report`.
+**Set the publishing status to "In production" first.** Google issues a refresh
+token that **expires in 7 days** to any project whose consent screen is external
+and still in "Testing". Your ad revenue would report for a week and then silently
+go to zero.
+
+That rule is about **publishing status, not scope sensitivity**. The AdMob scopes
+are classified **non-sensitive**, which is genuinely useful (no Google
+verification, no unverified app warning, no 100 user cap) but does **not** exempt
+you. The only exemption is for apps requesting nothing but `userinfo.email`,
+`userinfo.profile`, and `openid`, and we need `admob.report`. Testing still means
+seven days.
+
+The console no longer has an "OAuth consent screen" wizard. It is now **Google
+Auth Platform**, with Branding, Audience, Clients, and Data Access as separate
+pages.
 
 1. In the Google Cloud console, create or pick a project and **enable the AdMob
-   API**.
-2. Configure the **OAuth consent screen**. External user type, publishing status
-   **In production**. Add the scopes `admob.readonly` and `admob.report`.
-3. Create an **OAuth client ID** of type **Desktop app**. Desktop clients accept
-   any loopback port, which is what the setup script needs.
-4. Put the client id and secret in your secrets file:
+   API**. A dedicated project is worth it: billing attaches per project, and
+   keeping this one to AdMob alone means there is no billable surface. The AdMob
+   API itself is free.
+2. Menu, then **Google Auth Platform**, then **Branding**. Name the app, add your
+   email, and set the audience to **External**. Internal needs a Workspace
+   organisation, which a personal account does not have.
+3. **Audience**, then **PUBLISH APP**, so publishing status reads **In
+   production**. This is the step that matters. Do not submit for verification;
+   non-sensitive scopes never need it.
+4. **Data Access**, then **Add or remove scopes**. The AdMob scopes are not in the
+   common list, so use **Manually add scopes** and paste both:
+
+```
+https://www.googleapis.com/auth/admob.readonly
+https://www.googleapis.com/auth/admob.report
+```
+
+   Add to table, Update, Save. They land under **non-sensitive**, which is
+   correct.
+
+5. **Clients**, then **Create client**. Application type **Desktop app**. Desktop
+   clients accept any loopback port, which is what the setup script needs. A Web
+   application client would force you to pre register an exact port, and the
+   script picks a free one at random.
+6. Put the client id and secret in your secrets file:
 
 ```
 ADMOB_CLIENT_ID="....apps.googleusercontent.com"
 ADMOB_CLIENT_SECRET="..."
 ```
 
-5. Run the one time consent:
+7. Run the one time consent:
 
 ```
 bash scripts/admob_setup.sh
 ```
 
-It opens your browser, you approve, and it prints an `ADMOB_REFRESH_TOKEN` line
-to paste into the secrets file. The publisher id is discovered on first report
-and printed for you to paste too.
+It opens your browser. Pick the Google account **that owns your AdMob**, which
+matters if you are signed into more than one. Approve. It prints an
+`ADMOB_REFRESH_TOKEN` line to paste into the secrets file. The publisher id is
+discovered on the first report and printed for you to paste too.
 
 If the token ever dies, the report says so in plain words rather than leaving you
 with a bare `invalid_grant`, and the fix is to rerun the setup script.
