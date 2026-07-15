@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Nightly maintenance scheduler for macOS.
+
+  Install:
+    cp launchd/com.graysmithlabs.nightly.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.graysmithlabs.nightly.plist
+
+  The plist itself must live in ~/Library/LaunchAgents. That is where launchd
+  looks for user agents, so it cannot sit alongside the rest of the kit.
+
+  Two things this file works around:
+
+  1. launchd gives a job a bare PATH of /usr/bin:/bin:/usr/sbin:/sbin, so node
+     and npm are invisible to it. EnvironmentVariables below puts them back.
+  2. The repos live under ~/Documents, which macOS protects. This job needs Full
+     Disk Access granted to /bin/bash in System Settings, Privacy and Security.
+     Without it every repo read fails with Operation not permitted.
+
+  Linux cron alternative (runs at 3am daily):
+    0 3 * * * /bin/bash /home/YOUR_USERNAME/Documents/Github/graysmith_labs_agent/scripts/nightly_maintenance.sh
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.graysmithlabs.nightly</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/ramseygraysmith/Documents/Github/graysmith_labs_agent/scripts/nightly_maintenance.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/ramseygraysmith/.local/node/bin:/Users/ramseygraysmith/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>3</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/ramseygraysmith/Documents/Github/graysmith_labs_agent/reports/nightly_stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/ramseygraysmith/Documents/Github/graysmith_labs_agent/reports/nightly_stderr.log</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
