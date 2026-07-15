@@ -111,6 +111,10 @@ async function main() {
     console.log('version **V2**, permission `charts_metrics:overview:read`, then Generate.');
     console.log('Keys start with `sk_` and are shown once.');
     console.log('');
+    // AdMob is an independent source. Not having RevenueCat configured is no
+    // reason to withhold ad revenue, which for an ad supported app may be all of it.
+    const admobOnly = require('./admob_report.js');
+    await admobOnly();
     return;
   }
 
@@ -222,11 +226,11 @@ async function main() {
     console.log('');
   }
 
-  console.log('### ad networks and acquisition');
-  console.log('');
-  console.log('Not wired up. AdMob, AppLovin MAX, and Apple Search Ads each need their own');
-  console.log('credential. Subscription revenue above is the only source connected.');
-  console.log('');
+  // AdMob owns the ad section. Subscription revenue alone is not the whole
+  // picture for ad supported apps, and reporting it as if it were is how you end
+  // up believing you earn nothing.
+  const admob = require('./admob_report.js');
+  await admob();
 }
 
 main().catch((err) => {

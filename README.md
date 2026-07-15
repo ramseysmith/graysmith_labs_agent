@@ -28,8 +28,11 @@ graysmith_labs_agent/
                                     checks each repo. writes the report.
     appstore_watch.js               ratings, versions, and new reviews. public
                                     Apple endpoints, no credentials needed.
-    revenue_report.sh               RevenueCat snapshot. prints what is missing
-                                    and exits clean until the key is set.
+    revenue_report.sh               entry point: loads secrets, runs the two below
+    revenue_report.js               RevenueCat, one key per project, portfolio table
+    admob_report.js                 AdMob earnings per app. OAuth, no service accounts.
+    admob_setup.sh                  one time AdMob browser consent, prints the
+                                    refresh token to paste
     deploy_ota.sh                   gated over the air update wrapper
   launchd/
     com.graysmithlabs.nightly.plist macOS scheduler for the nightly job
@@ -182,6 +185,51 @@ Run `bash scripts/revenue_report.sh` to check your work. It reports each app
 separately, so a typo in one key does not hide the other three. The Charts and
 Metrics endpoints are rate limited to 25 requests per minute, and the nightly
 makes at most eight calls, so the limit is not a concern.
+
+#### AdMob, which is a different and worse story
+
+RevenueCat only knows about subscriptions. For ad supported apps that is not the
+whole picture, and treating it as the whole picture is how you conclude you earn
+nothing when you do.
+
+AdMob has **no API key**. It supports OAuth only and **does not support service
+accounts**, so a background job needs a refresh token captured once through a
+browser.
+
+**Set the OAuth consent screen publishing status to "In production" first.**
+Google issues a refresh token that **expires in 7 days** to any project whose
+consent screen is external and still in "Testing". Your ad revenue would report
+for a week and then silently go to zero. The exemption for non expiring tokens
+only covers the `userinfo` and `openid` scopes, and we need `admob.report`.
+
+1. In the Google Cloud console, create or pick a project and **enable the AdMob
+   API**.
+2. Configure the **OAuth consent screen**. External user type, publishing status
+   **In production**. Add the scopes `admob.readonly` and `admob.report`.
+3. Create an **OAuth client ID** of type **Desktop app**. Desktop clients accept
+   any loopback port, which is what the setup script needs.
+4. Put the client id and secret in your secrets file:
+
+```
+ADMOB_CLIENT_ID="....apps.googleusercontent.com"
+ADMOB_CLIENT_SECRET="..."
+```
+
+5. Run the one time consent:
+
+```
+bash scripts/admob_setup.sh
+```
+
+It opens your browser, you approve, and it prints an `ADMOB_REFRESH_TOKEN` line
+to paste into the secrets file. The publisher id is discovered on first report
+and printed for you to paste too.
+
+If the token ever dies, the report says so in plain words rather than leaving you
+with a bare `invalid_grant`, and the fix is to rerun the setup script.
+
+AppLovin MAX and Apple Search Ads are still unwired. Both also need their own
+credentials.
 
 ### 5. Point the scripts at your repos
 
